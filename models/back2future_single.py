@@ -175,11 +175,7 @@ class Model(nn.Module):
         # imb = im[:, 3:6, :, :] + 0.3    # I_+
         # imc = im[:, 6:, :, :] + 0.1     # I_-
         
-        # im_norm = self.normalize([im_tar] + [im_ref])
-
-        im_norm_ref = self.normalize_ref([im_ref])
-        im_norm_tgt = self.normalize_tgt([im_tar])
-        im_norm = im_norm_tgt+im_norm_ref
+        im_norm = self.normalize([im_tar] + [im_ref])
 
         # feat1a = self.conv1a(im_tar)
         feat1a = self.conv1a(im_norm[0])
