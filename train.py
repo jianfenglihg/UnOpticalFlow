@@ -301,36 +301,12 @@ def main():
 
     # create model
     print("=> creating model")
-    disp_net = getattr(models, args.dispnet)().cuda()
-    pose_net = getattr(models, args.posenet)().cuda()
-    move_net = getattr(models, args.movenet)(output_exp=True).cuda()
     if args.flownet=='SpyNet':
         flow_net = getattr(models, args.flownet)(nlevels=args.nlevels, pre_normalization=normalize).cuda()
     else:
         flow_net = getattr(models, args.flownet)(nlevels=args.nlevels).cuda()
 
     # load pre-trained weights
-    if args.pretrained_pose:
-        print("=> using pre-trained weights from {}".format(args.pretrained_pose))
-        weights = torch.load(args.pretrained_pose)
-        pose_net.load_state_dict(weights['state_dict'])
-    else:
-        pose_net.init_weights()
-
-    if args.pretrained_move:
-        print("=> using pre-trained weights for move net")
-        weights = torch.load(args.pretrained_move)
-        move_net.load_state_dict(weights['state_dict'])
-    else:
-        move_net.init_weights()
-        move_net.init_mask_weights()
-
-    if args.pretrained_disp:
-        print("=> using pre-trained weights from {}".format(args.pretrained_disp))
-        weights = torch.load(args.pretrained_disp)
-        disp_net.load_state_dict(weights['state_dict'])
-    else:
-        disp_net.init_weights()
 
     if args.pretrained_flow:
         print("=> using pre-trained weights for FlowNet")
@@ -342,28 +318,16 @@ def main():
 
     if args.resume:
         print("=> resuming from checkpoint")
-        dispnet_weights = torch.load(args.save_path/'dispnet_checkpoint.pth.tar')
-        posenet_weights = torch.load(args.save_path/'posenet_checkpoint.pth.tar')
-        movenet_weights = torch.load(args.save_path/'movenet_checkpoint.pth.tar')
         flownet_weights = torch.load(args.save_path/'flownet_checkpoint.pth.tar')
-        disp_net.load_state_dict(dispnet_weights['state_dict'])
-        pose_net.load_state_dict(posenet_weights['state_dict'])
-        move_net.load_state_dict(movenet_weights['state_dict'])
         flow_net.load_state_dict(flownet_weights['state_dict'])
 
 
     # import ipdb; ipdb.set_trace()
     cudnn.benchmark = True
-    disp_net = torch.nn.DataParallel(disp_net)
-    pose_net = torch.nn.DataParallel(pose_net)
-    move_net = torch.nn.DataParallel(move_net)
     flow_net = torch.nn.DataParallel(flow_net)
 
     print('=> setting adam solver')
-    #parameters = chain(disp_net.parameters(), pose_net.parameters(), move_net.parameters(), flow_net.parameters())
-    #parameters = chain(disp_net.parameters(), pose_net.parameters())
     parameters = chain(flow_net.parameters())
-    # parameters = chain(disp_net.parameters(), pose_net.parameters(), flow_net.parameters())
     optimizer = torch.optim.Adam(parameters, args.lr,
                                  betas=(args.momentum, args.beta),
                                  weight_decay=args.weight_decay)
@@ -397,18 +361,6 @@ def main():
     for epoch in range(args.epochs):
         scheduler.step()
     
-        if args.fix_movenet:
-            for fparams in move_net.parameters():
-                fparams.requires_grad = False
-
-        if args.fix_posenet:
-            for fparams in pose_net.parameters():
-                fparams.requires_grad = False
-
-        if args.fix_dispnet:
-            for fparams in disp_net.parameters():
-                fparams.requires_grad = False
-
         if args.fix_flownet:
             for fparams in flow_net.parameters():
                 fparams.requires_grad = False
@@ -418,7 +370,7 @@ def main():
             logger.reset_train_bar()
 
         # train for one epoch
-        train_loss = train(train_loader, disp_net, pose_net, move_net, flow_net, optimizer, args.epoch_size, logger, training_writer)
+        train_loss = train(train_loader, flow_net, optimizer, args.epoch_size, logger, training_writer)
 
         if args.log_terminal:
             logger.train_writer.write(' * Avg Loss : {:.3f}'.format(train_loss))
@@ -442,7 +394,7 @@ def main():
                 training_writer.add_scalar(name, error, epoch)
 
         if args.with_flow_gt:
-            flow_errors, flow_error_names = validate_flow_with_gt(val_flow_loader, disp_net, pose_net, flow_net, move_net, epoch, logger, output_writers)
+            flow_errors, flow_error_names = validate_flow_with_gt(val_flow_loader, flow_net, epoch, logger, output_writers)
 
             error_string = ', '.join('{} : {:.3f}'.format(name, error) for name, error in zip(flow_error_names, flow_errors))
 
@@ -465,8 +417,8 @@ def main():
         # elif not args.fix_movenet:
         #     decisive_error = flow_errors[-2]     # percent outliers
         #decisive_error = errors[0]
-        #decisive_error = flow_errors[0]
-        decisive_error = 0.0
+        decisive_error = flow_errors[0]
+        # decisive_error = 0.0
         if best_error < 0:
             best_error = decisive_error
 
@@ -474,16 +426,7 @@ def main():
         is_best = decisive_error <= best_error
         best_error = min(best_error, decisive_error)
         save_checkpoint(
-            args.save_path, {
-                'epoch': epoch + 1,
-                'state_dict': disp_net.module.state_dict()
-            }, {
-                'epoch': epoch + 1,
-                'state_dict': pose_net.module.state_dict()
-            }, {
-                'epoch': epoch + 1,
-                'state_dict': move_net.module.state_dict()
-            }, {
+            args.save_path,{
                 'epoch': epoch + 1,
                 'state_dict': flow_net.module.state_dict()
             }, {
@@ -499,7 +442,7 @@ def main():
         logger.epoch_bar.finish()
 
 
-def train(train_loader, disp_net, pose_net, move_net, flow_net, optimizer, epoch_size, logger=None, train_writer=None):
+def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writer=None):
     global args, n_iter
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -756,7 +699,7 @@ def validate_depth_with_gt(val_loader, disp_net, epoch, logger, output_writers=[
         logger.valid_bar.update(len(val_loader))
     return errors.avg, error_names
 
-def validate_flow_with_gt(val_loader, disp_net, pose_net, flow_net, move_net, epoch, logger, output_writers=[]):
+def validate_flow_with_gt(val_loader, flow_net, epoch, logger, output_writers=[]):
     global args
     batch_time = AverageMeter()
     error_names = ['epe_total', 'epe_rigid', 'epe_non_rigid', 'outliers']

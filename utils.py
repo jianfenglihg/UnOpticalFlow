@@ -64,7 +64,7 @@ def tensor2array(tensor, max_value=None, colormap='rainbow'):
 
 
 def save_checkpoint(save_path, dispnet_state, posenet_state, movenet_state, flownet_state, optimizer_state, is_best, filename='checkpoint.pth.tar'):
-    file_prefixes = ['dispnet', 'posenet', 'movenet', 'flownet', 'optimizer']
+    file_prefixes = ['flownet', 'optimizer']
     states = [dispnet_state, posenet_state, movenet_state, flownet_state, optimizer_state]
     for (prefix, state) in zip(file_prefixes, states):
         torch.save(state, save_path/'{}_{}'.format(prefix,filename))
