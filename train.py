@@ -90,7 +90,7 @@ parser.add_argument('--masknet', dest='masknet', type=str, default='MaskNet', ch
                     help='pose and explainabity mask network architecture. ')
 parser.add_argument('--movenet', dest='movenet', type=str, default='MoveResNet6', choices=['MoveResNet6', 'MoveNet6'],
                     help='pose and explainabity mask network architecture. ')
-parser.add_argument('--flownet', dest='flownet', type=str, default='FlowNetS', choices=['Back2Future', 'FlowNetC6','UnFlow','Back2FutureS','Back2FutureSN','Back2FutureSS'],
+parser.add_argument('--flownet', dest='flownet', type=str, default='FlowNetS', choices=['Back2Future', 'FlowNetC6','UnFlow','Back2FutureS'],
                     help='flow network architecture. Options: FlowNetC6 | Back2Future')
 
 parser.add_argument('--pretrained-disp', dest='pretrained_disp', default=None, metavar='PATH',
@@ -206,20 +206,20 @@ def main():
     #         normalize
     #     ])
 
+    #train_transform = custom_transforms.Compose([
+    #    custom_transforms.RandomHorizontalFlip(),
+    #    custom_transforms.RandomScaleCrop(),
+    #    custom_transforms.ArrayToTensor(),
+    #    normalize
+    #])
+ 
     train_transform = custom_transforms.Compose([
+        custom_transforms.Histogram_equalization(),
         custom_transforms.RandomHorizontalFlip(),
         custom_transforms.RandomScaleCrop(),
         custom_transforms.ArrayToTensor(),
         normalize
     ])
-
-    # train_transform = custom_transforms.Compose([
-    #     custom_transforms.Histogram_equalization(),
-    #     custom_transforms.RandomHorizontalFlip(),
-    #     custom_transforms.RandomScaleCrop(),
-    #     custom_transforms.ArrayToTensor(),
-    #     normalize
-    # ])
     
     # train_transform = custom_transforms.Compose([
     #     custom_transforms.RandomHorizontalFlip(),
@@ -295,41 +295,76 @@ def main():
 
     # create model
     print("=> creating model")
+    disp_net = getattr(models, args.dispnet)().cuda()
+    pose_net = getattr(models, args.posenet)().cuda()
+    move_net = getattr(models, args.movenet)(output_exp=True).cuda()
     if args.flownet=='SpyNet':
         flow_net = getattr(models, args.flownet)(nlevels=args.nlevels, pre_normalization=normalize).cuda()
     else:
         flow_net = getattr(models, args.flownet)(nlevels=args.nlevels).cuda()
 
     # load pre-trained weights
+    if args.pretrained_pose:
+        print("=> using pre-trained weights from {}".format(args.pretrained_pose))
+        weights = torch.load(args.pretrained_pose)
+        pose_net.load_state_dict(weights['state_dict'])
+    else:
+        pose_net.init_weights()
+
+    if args.pretrained_move:
+        print("=> using pre-trained weights for move net")
+        weights = torch.load(args.pretrained_move)
+        move_net.load_state_dict(weights['state_dict'])
+    else:
+        move_net.init_weights()
+        move_net.init_mask_weights()
+
+    if args.pretrained_disp:
+        print("=> using pre-trained weights from {}".format(args.pretrained_disp))
+        weights = torch.load(args.pretrained_disp)
+        disp_net.load_state_dict(weights['state_dict'])
+    else:
+        disp_net.init_weights()
 
     if args.pretrained_flow:
         print("=> using pre-trained weights for FlowNet")
         weights = torch.load(args.pretrained_flow)
         flow_net.load_state_dict(weights['state_dict'])
-    else:
-        flow_net.init_weights()
+    # else:
+        #flow_net.init_weights()
 
 
     if args.resume:
         print("=> resuming from checkpoint")
+        dispnet_weights = torch.load(args.save_path/'dispnet_checkpoint.pth.tar')
+        posenet_weights = torch.load(args.save_path/'posenet_checkpoint.pth.tar')
+        movenet_weights = torch.load(args.save_path/'movenet_checkpoint.pth.tar')
         flownet_weights = torch.load(args.save_path/'flownet_checkpoint.pth.tar')
+        disp_net.load_state_dict(dispnet_weights['state_dict'])
+        pose_net.load_state_dict(posenet_weights['state_dict'])
+        move_net.load_state_dict(movenet_weights['state_dict'])
         flow_net.load_state_dict(flownet_weights['state_dict'])
 
 
     # import ipdb; ipdb.set_trace()
     cudnn.benchmark = True
+    disp_net = torch.nn.DataParallel(disp_net)
+    pose_net = torch.nn.DataParallel(pose_net)
+    move_net = torch.nn.DataParallel(move_net)
     flow_net = torch.nn.DataParallel(flow_net)
 
     print('=> setting adam solver')
+    #parameters = chain(disp_net.parameters(), pose_net.parameters(), move_net.parameters(), flow_net.parameters())
+    #parameters = chain(disp_net.parameters(), pose_net.parameters())
     parameters = chain(flow_net.parameters())
+    # parameters = chain(disp_net.parameters(), pose_net.parameters(), flow_net.parameters())
     optimizer = torch.optim.Adam(parameters, args.lr,
                                  betas=(args.momentum, args.beta),
                                  weight_decay=args.weight_decay)
 
-    milestones = [200,300]
+    milestones = [200]
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=0.1, last_epoch=-1)
-    # milestones = [50,100,150,200,250]
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=0.5, last_epoch=-1)
+
     if args.min:
         print("using min method")
 
@@ -355,6 +390,18 @@ def main():
     for epoch in range(args.epochs):
         scheduler.step()
     
+        if args.fix_movenet:
+            for fparams in move_net.parameters():
+                fparams.requires_grad = False
+
+        if args.fix_posenet:
+            for fparams in pose_net.parameters():
+                fparams.requires_grad = False
+
+        if args.fix_dispnet:
+            for fparams in disp_net.parameters():
+                fparams.requires_grad = False
+
         if args.fix_flownet:
             for fparams in flow_net.parameters():
                 fparams.requires_grad = False
@@ -364,7 +411,7 @@ def main():
             logger.reset_train_bar()
 
         # train for one epoch
-        train_loss = train(train_loader, flow_net, optimizer, args.epoch_size, logger, training_writer)
+        train_loss = train(train_loader, disp_net, pose_net, move_net, flow_net, optimizer, args.epoch_size, logger, training_writer)
 
         if args.log_terminal:
             logger.train_writer.write(' * Avg Loss : {:.3f}'.format(train_loss))
@@ -388,7 +435,7 @@ def main():
                 training_writer.add_scalar(name, error, epoch)
 
         if args.with_flow_gt:
-            flow_errors, flow_error_names = validate_flow_with_gt(val_flow_loader, flow_net, epoch, logger, output_writers)
+            flow_errors, flow_error_names = validate_flow_with_gt(val_flow_loader, disp_net, pose_net, flow_net, move_net, epoch, logger, output_writers)
 
             error_string = ', '.join('{} : {:.3f}'.format(name, error) for name, error in zip(flow_error_names, flow_errors))
 
@@ -412,7 +459,6 @@ def main():
         #     decisive_error = flow_errors[-2]     # percent outliers
         #decisive_error = errors[0]
         decisive_error = flow_errors[0]
-        # decisive_error = 0.0
         if best_error < 0:
             best_error = decisive_error
 
@@ -420,7 +466,16 @@ def main():
         is_best = decisive_error <= best_error
         best_error = min(best_error, decisive_error)
         save_checkpoint(
-            args.save_path,{
+            args.save_path, {
+                'epoch': epoch + 1,
+                'state_dict': disp_net.module.state_dict()
+            }, {
+                'epoch': epoch + 1,
+                'state_dict': pose_net.module.state_dict()
+            }, {
+                'epoch': epoch + 1,
+                'state_dict': move_net.module.state_dict()
+            }, {
                 'epoch': epoch + 1,
                 'state_dict': flow_net.module.state_dict()
             }, {
@@ -436,7 +491,7 @@ def main():
         logger.epoch_bar.finish()
 
 
-def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writer=None):
+def train(train_loader, disp_net, pose_net, move_net, flow_net, optimizer, epoch_size, logger=None, train_writer=None):
     global args, n_iter
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -455,32 +510,77 @@ def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writ
         data_time.update(time.time() - end)
         tgt_img_var = Variable(tgt_img.cuda())
         ref_imgs_var = [Variable(img.cuda()) for img in ref_imgs]
+        # intrinsics_var = Variable(intrinsics.cuda())
+        # intrinsics_inv_var = Variable(intrinsics_inv.cuda())
 
+        # compute output
+        # tgt_depth, ref_depths, tgt_disp, ref_disps = compute_depth(disp_net, tgt_img_var, ref_imgs_var)
+        # poses, poses_inv = compute_pose_with_inv(pose_net, tgt_img_var, ref_imgs_var)
+        
+        # motion_bwd, motion_fwd = compute_move(move_net, tgt_img_var, ref_imgs_var)
 
-        if len(ref_imgs) == 2:
-            if args.flownet == 'Back2Future':
-                flow_fwd, flow_bwd = flow_net(tgt_img_var, ref_imgs_var)
-            else:
-                flow_fwd = flow_net(tgt_img_var, ref_imgs_var[1])
-                flow_bwd = flow_net(tgt_img_var, ref_imgs_var[0])
+        # if args.spatial_normalize:
+        #     tgt_depth = [spatial_normalize(disp) for disp in tgt_depth]
+        #     ref_depths = [spatial_normalize(disp) for disp in ref_depths]
+
+        if args.flownet == 'Back2Future':
+            flow_fwd, flow_bwd = flow_net(tgt_img_var, ref_imgs_var)
         else:
-            if args.flownet == 'Back2Future':
-                flow_fwd, flow_bwd = flow_net(tgt_img_var, ref_imgs_var)
-            else:
-                flow_fwd = flow_net(tgt_img_var, ref_imgs_var[2])
-                flow_bwd = flow_net(tgt_img_var, ref_imgs_var[1])
-                flow_fwd_2 = flow_net(tgt_img_var, ref_imgs_var[3])
-                flow_bwd_2 = flow_net(tgt_img_var, ref_imgs_var[0])
+            flow_fwd = flow_net(tgt_img_var, ref_imgs_var[1])
+            flow_bwd = flow_net(tgt_img_var, ref_imgs_var[0])
             
-            ref_imgs_var_2 = [ref_imgs_var[0],ref_imgs_var[3]]
-            ref_imgs_var = [ref_imgs_var[1],ref_imgs_var[2]]
+        # print(flow_bwd[0].size())
+        # print(flow_fwd[0].size())
+        # flow_cam = pose2flow(tgt_depth[0].squeeze(), poses[1], intrinsics_var, intrinsics_inv_var)     # pose[:,2] belongs to forward frame
 
+        # loss_depth_recon = torch.zeros(1).cuda()
+        # loss_depth_consis = torch.zeros(1).cuda()
         loss_smooth = torch.zeros(1).cuda() 
         loss_flow_recon = torch.zeros(1).cuda()
         # loss_consensus = torch.zeros(1).cuda()
         loss_velocity_consis = torch.zeros(1).cuda()
         # loss_triangulation = torch.zeros(1).cuda()
 
+        # mask
+
+        # p_mask = (1 - photometric_mask(tgt_img)).cuda()
+
+        # dc_mask_from_bwd, dc_mask_from_fwd = compute_rigid_mask_from_dc(tgt_img_var, tgt_depth, ref_depths, poses, intrinsics_var, intrinsics_inv_var, args.nlevels)
+        # dc_mask = [dc_mask_from_bwd_*dc_mask_from_fwd_ for dc_mask_from_bwd_, dc_mask_from_fwd_ in zip(dc_mask_from_bwd, dc_mask_from_fwd)]
+
+        # valid_area = compute_valid_area(tgt_depth, poses, [flow_fwd,flow_bwd], intrinsics_var, intrinsics_inv_var, tgt_img_var, ref_imgs_var, args.nlevels)
+
+        # rigidity_mask = compute_rigidity_mask(tgt_depth,poses,flow_fwd,flow_bwd,intrinsics_var,intrinsics_inv_var,valid_area)
+       
+        # non_rigidity_mask = [1-rigidity_mask_ for rigidity_mask_ in rigidity_mask]
+        
+        # motion_masked_bwd, motion_masked_fwd = compute_masked_motion(motion_bwd, motion_fwd, non_rigidity_mask)
+        
+        # if args.cam_photo_loss_weight:
+        #     # loss_depth_recon = photometric_reconstruction_loss_wmove([motion_masked_bwd, motion_masked_fwd], tgt_img_var, \
+        #     #    ref_imgs_var, intrinsics_var, intrinsics_inv_var, tgt_depth, poses, args.nlevels)
+        #     # loss_depth_recon = args.cam_photo_loss_weight * loss_depth_recon
+                
+        #     loss_depth_recon = args.cam_photo_loss_weight * photometric_reconstruction_loss(p_mask,tgt_img_var, \
+        #          ref_imgs_var, intrinsics_var, intrinsics_inv_var, tgt_depth, poses, args.nlevels)
+        #     loss_depth_recon = args.cam_photo_loss_weight * loss_depth_recon
+
+        #     if args.smooth_loss_weight:
+        #         if args.smoothness_type == "regular":
+        #             loss_smooth = smooth_loss(tgt_depth)
+        #             for ref_depth in ref_depths:
+        #                 loss_smooth += smooth_loss(ref_depth)
+        #         elif args.smoothness_type == "edgeaware":
+        #             loss_smooth = edge_aware_smoothness_loss(tgt_img_var, tgt_disp)
+        #             for ref_img_var, ref_disp in zip(ref_imgs_var, ref_disps):
+        #                 loss_smooth += edge_aware_smoothness_loss(ref_img_var, ref_disp)
+        #         loss_smooth = loss_smooth*args.smooth_loss_weight
+
+        # if args.depth_consis_weight:
+        #     # loss_depth_consis, rigid_mask_from_dc = compute_depth_consis_wmove([motion_bwd, motion_fwd], tgt_img_var, tgt_depth, ref_depths, poses, intrinsics_var, intrinsics_inv_var, args.nlevels)
+        #     # loss_depth_consis = args.depth_consis_weight*loss_depth_consis
+        #     loss_depth_consis = args.depth_consis_weight*compute_depth_consis(tgt_img_var, tgt_depth, ref_depths, poses,\
+        #       intrinsics_var, intrinsics_inv_var, args.nlevels)
 
         if args.flow_photo_loss_weight_first: 
             if args.min:
@@ -498,15 +598,17 @@ def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writ
                 loss_flow_recon += args.flow_photo_loss_weight_second * loss_per
             else:
                 loss_flow_recon += args.flow_photo_loss_weight_second*photometric_flow_gradient_loss(tgt_img_var, ref_imgs_var, [flow_bwd, flow_fwd],
-                                                lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
+                                                lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim, wconsis=args.wconsis)
             
 
         if args.smooth_loss_weight_first:
             if args.smoothness_type == "regular":
                 loss_smooth += args.smooth_loss_weight_first*(smooth_loss(flow_fwd) + smooth_loss(flow_bwd))
             elif args.smoothness_type == "edgeaware":
-                # loss_smooth += args.smooth_loss_weight_first*(edge_aware_smoothness_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_loss(tgt_img_var, flow_bwd))
-                loss_smooth += args.smooth_loss_weight_first*(edge_aware_smoothness_loss_change_weight(tgt_img_var, flow_fwd, args.alpha)+edge_aware_smoothness_loss_change_weight(tgt_img_var, flow_bwd, args.alpha))
+                loss_smooth += args.smooth_loss_weight_first*(edge_aware_smoothness_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_loss(tgt_img_var, flow_bwd))
+                # loss_smooth = args.smooth_loss_weight*(edge_aware_smoothness_second_order_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_second_order_loss(tgt_img_var, flow_bwd))
+                # loss_smooth = args.smooth_loss_weight*(edge_aware_smoothness_second_order_loss_change_weight(tgt_img_var, flow_bwd, args.alpha)\
+                #     + edge_aware_smoothness_second_order_loss_change_weight(tgt_img_var, flow_fwd, args.alpha))
 
         if args.smooth_loss_weight_second:
             if args.smoothness_type == "regular":
@@ -523,54 +625,16 @@ def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writ
         if args.velocity_consis_loss_weight:
             loss_velocity_consis = args.velocity_consis_loss_weight*flow_velocity_consis_loss( [flow_bwd, flow_fwd])
 
+        # if args.consensus_loss_weight:
+        #     # loss_consensus = args.consensus_loss_weight*compute_consensus_loss(tgt_depth, poses, [flow_bwd,flow_fwd], rigidity_mask, intrinsics_var, intrinsics_inv_var, tgt_img_var, ref_imgs_var[1], ref_imgs_var[0], args.wssim, args.wrig, args.nlevels, ws=args.smooth_loss_weight)
+        #     loss_consensus = args.consensus_loss_weight*compute_consensus_loss_wmove([motion_masked_bwd, motion_masked_fwd], tgt_depth, poses, [flow_bwd,flow_fwd], intrinsics_var, intrinsics_inv_var, tgt_img_var, ref_imgs_var[1], ref_imgs_var[0], args.wssim, args.wrig, args.nlevels, ws=args.smooth_loss_weight)
+
+        # if args.triangulation_loss_weight:
+        #     loss_triangulation, depth_compute = compute_triangulation_loss(poses[1],flow_fwd,intrinsics_var,tgt_depth)
+        #     loss_triangulation *= args.triangulation_loss_weight
+
 
         loss = loss_smooth + loss_flow_recon + loss_velocity_consis
-
-        if args.sequence_length == 5:
-
-            loss_smooth_2 = torch.zeros(1).cuda() 
-            loss_flow_recon_2 = torch.zeros(1).cuda()
-            # loss_consensus = torch.zeros(1).cuda()
-            loss_velocity_consis_2 = torch.zeros(1).cuda()
-
-            if args.flow_photo_loss_weight_first: 
-                if args.min:
-                    loss_flow_recon_2 += args.flow_photo_loss_weight_first*photometric_flow_min_loss(tgt_img_var, ref_imgs_var_2, [flow_bwd_2, flow_fwd_2],
-                                                    lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
-                else:
-                    loss_flow_recon_2 += args.flow_photo_loss_weight_first*photometric_flow_loss(tgt_img_var, ref_imgs_var, [flow_bwd, flow_fwd],
-                                                    lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
-
-            if args.flow_photo_loss_weight_second: 
-                if args.min:
-                    
-                    loss_per, loss_weight= photometric_flow_gradient_min_loss(tgt_img_var, ref_imgs_var, [flow_bwd, flow_fwd],
-                                                    lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
-                    loss_flow_recon_2 += args.flow_photo_loss_weight_second * loss_per
-                else:
-                    loss_flow_recon_2 += args.flow_photo_loss_weight_second*photometric_flow_gradient_loss(tgt_img_var, ref_imgs_var, [flow_bwd, flow_fwd],
-                                                    lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
-                
-
-            if args.smooth_loss_weight_first:
-                if args.smoothness_type == "regular":
-                    loss_smooth_2 += args.smooth_loss_weight_first*(smooth_loss(flow_fwd) + smooth_loss(flow_bwd))
-                elif args.smoothness_type == "edgeaware":
-                    loss_smooth_2 += args.smooth_loss_weight_first*(edge_aware_smoothness_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_loss(tgt_img_var, flow_bwd))
-
-            if args.smooth_loss_weight_second:
-                if args.smoothness_type == "regular":
-                    loss_smooth_2 += args.smooth_loss_weight_second*(smooth_loss(flow_fwd) + smooth_loss(flow_bwd))
-                elif args.smoothness_type == "edgeaware":
-                    # loss_smooth = args.smooth_loss_weight*(edge_aware_smoothness_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_loss(tgt_img_var, flow_bwd))
-                    # loss_smooth += args.smooth_loss_weight_second*(edge_aware_smoothness_second_order_loss(tgt_img_var, flow_fwd)+edge_aware_smoothness_second_order_loss(tgt_img_var, flow_bwd))
-                    loss_smooth_2 = args.smooth_loss_weight_second*(edge_aware_smoothness_second_order_loss_change_weight(tgt_img_var, flow_bwd, args.alpha)\
-                        + edge_aware_smoothness_second_order_loss_change_weight(tgt_img_var, flow_fwd, args.alpha))
-                    # loss_smooth = args.smooth_loss_weight_second*(edge_aware_smoothness_second_all_direction_loss(tgt_img_var, flow_bwd, args.alpha)\
-                    #     + edge_aware_smoothness_second_all_direction_loss(tgt_img_var, flow_fwd, args.alpha))
-            
-            loss += loss_smooth_2 + loss_flow_recon_2
-
         # loss = loss_depth_recon + loss_depth_consis + loss_smooth + loss_flow_recon + loss_consensus + loss_velocity_consis + loss_triangulation
         
         if i > 0 and n_iter % args.print_freq == 0:
@@ -615,7 +679,39 @@ def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writ
             train_writer.add_image('train Flow FWD error Image',tensor2array(flow_warp(tgt_img_var-ref_imgs_var[1],flow_fwd[0]).data[0].cpu()) , n_iter )
             train_writer.add_image('train Flow BWD error Image',tensor2array(flow_warp(tgt_img_var-ref_imgs_var[0],flow_bwd[0]).data[0].cpu()) , n_iter )
 
-           
+            # for k,scaled_depth in enumerate(tgt_depth):
+            #     if k == 0:
+            #         # train_writer.add_image('train Dispnet Output Normalized {}'.format(k),
+            #         #                        tensor2array(1/tgt_depth[k].data[0].cpu(), max_value=None, colormap='bone'),
+            #         #                        n_iter)
+            #         # train_writer.add_image('train Depth Output {}'.format(k),
+            #         #                        tensor2array(tgt_depth[k].data[0].cpu(), max_value=10),
+            #         #                        n_iter)
+        
+            #         # train_writer.add_image('train Target Rigidity {}'.format(k),
+            #         #                         tensor2array((rigidity_mask_fwd[k]>args.THRESH).type_as(rigidity_mask_fwd[k]).data[0].cpu(), max_value=1, colormap='bone') , n_iter )
+
+            #         b, _, h, w = scaled_depth.size()
+            #         downscale = tgt_img_var.size(2)/h
+
+            #         tgt_img_scaled = nn.functional.adaptive_avg_pool2d(tgt_img_var, (h, w))
+            #         ref_imgs_scaled = [nn.functional.adaptive_avg_pool2d(ref_img, (h, w)) for ref_img in ref_imgs_var]
+
+            #         intrinsics_scaled = torch.cat((intrinsics_var[:, 0:2]/downscale, intrinsics_var[:, 2:]), dim=1)
+            #         intrinsics_scaled_inv = torch.cat((intrinsics_inv_var[:, :, 0:2]*downscale, intrinsics_inv_var[:, :, 2:]), dim=2)
+
+
+            #         # # log warped images along with explainability mask
+            #         for j,ref in enumerate(ref_imgs_scaled):
+            #             ref_warped = inverse_warp(ref, scaled_depth[:,0], poses[j],
+            #                                       intrinsics_scaled, intrinsics_scaled_inv,
+            #                                       rotation_mode=args.rotation_mode,
+            #                                       padding_mode=args.padding_mode)[0]
+            #             train_writer.add_image('train Warped Outputs {} {}'.format(k,j), tensor2array(ref_warped.data.cpu()), n_iter)
+            #             train_writer.add_image('train Diff Outputs {} {}'.format(k,j), tensor2array(0.5*(tgt_img_scaled[0] - ref_warped).abs().data.cpu()), n_iter)
+            #             # if explainability_mask[k] is not None:
+            #             #     train_writer.add_image('train Exp mask Outputs {} {}'.format(k,j), tensor2array(explainability_mask[k][0,j].data.cpu(), max_value=1, colormap='bone'), n_iter)
+
         # record loss and EPE
         losses.update(loss.item(), args.batch_size)
 
@@ -693,7 +789,7 @@ def validate_depth_with_gt(val_loader, disp_net, epoch, logger, output_writers=[
         logger.valid_bar.update(len(val_loader))
     return errors.avg, error_names
 
-def validate_flow_with_gt(val_loader, flow_net, epoch, logger, output_writers=[]):
+def validate_flow_with_gt(val_loader, disp_net, pose_net, flow_net, move_net, epoch, logger, output_writers=[]):
     global args
     batch_time = AverageMeter()
     error_names = ['epe_total', 'epe_rigid', 'epe_non_rigid', 'outliers']
@@ -750,7 +846,44 @@ def validate_flow_with_gt(val_loader, flow_net, epoch, logger, output_writers=[]
             #print("Flow Fwd Median: ", flow_fwd_x.median())
             flow_gt_var_x = flow_gt_var[:,0].view(-1).abs().data
             #print("Flow GT Median: ", flow_gt_var_x.index_select(0, flow_gt_var_x.nonzero().view(-1)).median())
-       
+        # flow_cam = pose2flow(depth.squeeze(1), pose[1], intrinsics_var, intrinsics_inv_var)
+        #flow_cam = pose2flow_wmove(motion_fwd, depth.squeeze(1), pose[1], intrinsics_var, intrinsics_inv_var)
+        
+        # oob_rigid = flow2oob(flow_cam)
+        # oob_non_rigid = flow2oob(flow_fwd)
+
+        #rigidity_mask = 1 - (1-explainability_mask[:,1])*(1-explainability_mask[:,2]).unsqueeze(1) > 0.5
+        # flows_cam_fwd = pose2flow(depth.squeeze(1), pose[1], intrinsics_var, intrinsics_inv_var) 
+        # flows_cam_bwd = pose2flow(depth.squeeze(1), pose[0], intrinsics_var, intrinsics_inv_var) 
+        # rigidity_mask = consensus_exp_masks(flows_cam_fwd, flows_cam_bwd, flow_fwd, flow_bwd, tgt_img_var, ref_imgs_var[1], ref_imgs_var[0], wssim=args.wssim, wrig=args.wrig, ws=args.smooth_loss_weight )
+        # rigidity_mask = [Variable(rigid_mask_one_scale.data, requires_grad=False) for rigid_mask_one_scale in rigidity_mask]
+
+        # rigidity_mask_fwd = flow_diff(flows_cam_fwd , flow_fwd)#.normalize()
+        # rigidity_mask_bwd = flow_diff(flows_cam_bwd , flow_bwd)#.normalize()
+
+        # mean_fwd = rigidity_mask_fwd.mean()
+        # mean_bwd = rigidity_mask_bwd.mean()
+        #max_fwd = rigidity_mask_fwd[0].max()
+        #print(mean_fwd.cpu())
+        #max_bwd = rigidity_mask_bwd[0].max()
+
+        # #motion_mask_fwd = [(rigidity_mask_fwd_ / max_fwd) for rigidity_mask_fwd_ in rigidity_mask_fwd]
+        # #motion_mask_bwd = [(rigidity_mask_bwd_ / max_bwd) for rigidity_mask_bwd_ in rigidity_mask_bwd]
+        # rigid_mask_fwd = (rigidity_mask_fwd < 2*mean_fwd).type_as(rigidity_mask_bwd).prod(dim=1, keepdim=True)
+        # rigid_mask_bwd = (rigidity_mask_bwd < 2*mean_bwd).type_as(rigidity_mask_bwd).prod(dim=1, keepdim=True)
+
+        # rigid_mask_fwd = [Variable(rigid_mask_fwd_one_scale.data, requires_grad=False) for rigid_mask_fwd_one_scale in rigid_mask_fwd]
+        # rigid_mask_bwd = [Variable(rigid_mask_bwd_one_scale.data, requires_grad=False) for rigid_mask_bwd_one_scale in rigid_mask_bwd]
+
+        # rigidity_mask = rigid_mask_fwd*rigid_mask_bwd
+
+        # rigidity_mask_census_soft = (flow_cam - flow_fwd).abs()#.normalize()
+        # rigidity_mask_census_u = rigidity_mask_census_soft[:,0] < args.THRESH
+        # rigidity_mask_census_v = rigidity_mask_census_soft[:,1] < args.THRESH
+        # rigidity_mask_census = (rigidity_mask_census_u).type_as(flow_fwd) * (rigidity_mask_census_v).type_as(flow_fwd)
+
+        #rigidity_mask_combined = 1 - (1-rigidity_mask.type_as(explainability_mask))*(1-rigidity_mask_census.type_as(explainability_mask))
+        # rigidity_mask_combined = 1 - (1-rigidity_mask_census)
         flow_fwd_non_rigid =  flow_fwd
         # flow_fwd_rigid = flow_cam
         #flow_fwd_non_rigid = (rigidity_mask_combined<=args.THRESH).type_as(flow_fwd).expand_as(flow_fwd) * flow_fwd
@@ -775,6 +908,40 @@ def validate_flow_with_gt(val_loader, flow_net, epoch, logger, output_writers=[]
             # output_writers[index].add_image('val Rigid Flow Output', flow_to_image(tensor2array(flow_fwd_rigid.data[0].cpu())), epoch)
             output_writers[index].add_image('val Non-rigid Flow Output', flow_to_image(tensor2array(flow_fwd_non_rigid.data[0].cpu())), epoch)
             #output_writers[index].add_image('val Out of Bound (Rigid)', tensor2array(oob_rigid.type(torch.FloatTensor).data[0].cpu(), max_value=1, colormap='bone'), epoch)
+
+            #output_writers[index].add_scalar('val Mean oob (Rigid)', oob_rigid.type(torch.FloatTensor).sum(), epoch)
+            #output_writers[index].add_image('val Out of Bound (Non-Rigid)', tensor2array(oob_non_rigid.type(torch.FloatTensor).data[0].cpu(), max_value=1, colormap='bone'), epoch)
+            #output_writers[index].add_scalar('val Mean oob (Non-Rigid)', oob_non_rigid.type(torch.FloatTensor).sum(), epoch)
+            #output_writers[index].add_image('val Cam Flow Errors', tensor2array(flow_diff(flow_gt_var, flow_cam).data[0].cpu()), epoch)
+            #output_writers[index].add_image('val Rigidity Mask', tensor2array(rigidity_mask.data[0].cpu(), max_value=1, colormap='bone'), epoch)
+            # output_writers[index].add_image('val Rigidity Mask Census', tensor2array(rigidity_mask.data[0].cpu(), max_value=1, colormap='bone'), epoch)
+            # output_writers[index].add_image('val Scene_flow_z', tensor2array(motion_fwd_z.data[0].cpu(), max_value=1, colormap='rainbow'), epoch)
+            # output_writers[index].add_image('val Scene_flow_x', tensor2array(motion_fwd_y.data[0].cpu(), max_value=1, colormap='rainbow'), epoch)
+            # output_writers[index].add_image('val Scene_flow_y', tensor2array(motion_fwd_x.data[0].cpu(), max_value=1, colormap='rainbow'), epoch)
+            # for j,ref in enumerate(ref_imgs_var):
+            #     ref_warped = inverse_warp(ref[:1], depth[:1,0], pose[j][:1,:],
+            #                               intrinsics_var[:1], intrinsics_inv_var[:1],
+            #                               rotation_mode=args.rotation_mode,
+            #                               padding_mode=args.padding_mode)[0]
+
+            #     output_writers[index].add_image('val Warped Outputs {}'.format(j), tensor2array(ref_warped.data.cpu()), epoch)
+            #     output_writers[index].add_image('val Diff Outputs {}'.format(j), tensor2array(0.5*(tgt_img_var[0] - ref_warped).abs().data.cpu()), epoch)
+            # #    if explainability_mask is not None:
+            # #         output_writers[index].add_image('val Exp mask Outputs {}'.format(j), tensor2array(explainability_mask[0,j].data.cpu(), max_value=1, colormap='bone'), epoch)
+
+            # if args.DEBUG:
+            #     # Check if pose2flow is consistant with inverse warp
+            #     ref_warped_from_depth = inverse_warp(ref_imgs_var[1][:1], depth[:1,0], pose[1][:1],
+            #                 intrinsics_var[:1], intrinsics_inv_var[:1], rotation_mode=args.rotation_mode,
+            #                 padding_mode=args.padding_mode)[0] 
+            #     ref_warped_from_cam_flow = flow_warp(ref_imgs_var[1][:1], flow_cam)[0]
+            #     #print("DEBUG_INFO: Inverse_warp vs pose2flow",torch.mean(torch.abs(ref_warped_from_depth-ref_warped_from_cam_flow)).item())
+            #     output_writers[index].add_image('val Warped Outputs from Cam Flow', tensor2array(ref_warped_from_cam_flow.data.cpu()), epoch)
+            #     output_writers[index].add_image('val Warped Outputs from inverse warp', tensor2array(ref_warped_from_depth.data.cpu()), epoch)
+
+        # if log_outputs and i < len(val_loader)-1:
+        #     step = args.sequence_length-1
+        #     poses[i * step:(i+1) * step] = pose.data.cpu().view(-1,6).numpy()
 
 
         if np.isnan(flow_gt.sum().item()) or np.isnan(total_flow.data.sum().item()):

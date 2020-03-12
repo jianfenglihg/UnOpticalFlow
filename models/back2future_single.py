@@ -124,41 +124,6 @@ class Model(nn.Module):
             imt.append(im)
         return imt
 
-    def normalize_tgt(self, ims):
-        # tensorFirst[:, 0, :, :] = tensorFirst[:, 0, :, :] - 0.411618
-		# tensorFirst[:, 1, :, :] = tensorFirst[:, 1, :, :] - 0.434631
-		# tensorFirst[:, 2, :, :] = tensorFirst[:, 2, :, :] - 0.454253
-
-		# tensorSecond[:, 0, :, :] = tensorSecond[:, 0, :, :] - 0.410782
-		# tensorSecond[:, 1, :, :] = tensorSecond[:, 1, :, :] - 0.433645
-		# tensorSecond[:, 2, :, :] = tensorSecond[:, 2, :, :] - 0.452793
-        imt = []
-        for im in ims:
-            im[:,0,:,:] = im[:,0,:,:] - 0.411618  # Red
-            im[:,1,:,:] = im[:,1,:,:] - 0.434631 # Green
-            im[:,2,:,:] = im[:,2,:,:] - 0.454253 # Blue
-
-            imt.append(im)
-        return imt
-
-    def normalize_ref(self, ims):
-        # tensorFirst[:, 0, :, :] = tensorFirst[:, 0, :, :] - 0.411618
-		# tensorFirst[:, 1, :, :] = tensorFirst[:, 1, :, :] - 0.434631
-		# tensorFirst[:, 2, :, :] = tensorFirst[:, 2, :, :] - 0.454253
-
-		# tensorSecond[:, 0, :, :] = tensorSecond[:, 0, :, :] - 0.410782
-		# tensorSecond[:, 1, :, :] = tensorSecond[:, 1, :, :] - 0.433645
-		# tensorSecond[:, 2, :, :] = tensorSecond[:, 2, :, :] - 0.452793
-        imt = []
-        for im in ims:
-            im[:,0,:,:] = im[:,0,:,:] - 0.410782 # Red
-            im[:,1,:,:] = im[:,1,:,:] - 0.433645 # Green
-            im[:,2,:,:] = im[:,2,:,:] - 0.452793 # Blue
-
-            imt.append(im)
-        return imt
-
-
     def forward(self, im_tar, im_ref):
         '''
             inputS:
@@ -174,7 +139,6 @@ class Model(nn.Module):
         # ima = im[:, :3, :, :] + 0.2     # I_0
         # imb = im[:, 3:6, :, :] + 0.3    # I_+
         # imc = im[:, 6:, :, :] + 0.1     # I_-
-        
         im_norm = self.normalize([im_tar] + [im_ref])
 
         # feat1a = self.conv1a(im_tar)

@@ -126,22 +126,17 @@ class RandomRotate(object):
 
 
 class Histogram_equalization(object):
-       def __call__(self, images, intrinsics):
-      
-        def rgb_histeql(im):
-            imarr = im.flatten()
-            hist, bins = np.histogram(imarr, 255)
-            cdf = np.cumsum(hist)
-            cdf = 255* (cdf/cdf[-1])
-            imarr2 = np.interp(imarr, bins[:-1], cdf)
-            imarr2 = imarr2.reshape(im.shape)
-            return imarr2
+    def rgb_histeql(im):
+        imarr = im.flatten()
+        hist, bins = np.histogram(imarr, 255)
+        cdf = np.cumsum(hist)
+        cdf = 255* (cdf/cdf[-1])
+        imarr2 = np.interp(imarr, bins[:-1], cdf)
+        imarr2 = imarr2.reshape(im.shape)
+        return imarr2
 
-        histeql_images = []
-        for im in images:
-            histeql_image = rgb_histeql(im)
-            histeql_images.append(histeql_image)
-
+    def __call__(self, images, intrinsics):
+        histeql_images = [rgb_histeql(im) for im in images]
         return histeql_images, intrinsics
 
 class RandomScaleCrop(object):

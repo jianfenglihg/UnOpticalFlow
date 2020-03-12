@@ -278,7 +278,7 @@ def photometric_flow_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.38, wssi
     return loss
 
 
-def photometric_flow_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.5, wssim=0.0):
+def photometric_flow_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.38, wssim=0.0):
     def one_scale(flows):
         #assert(explainability_mask is None or flows[0].size()[2:] == explainability_mask.size()[2:])
         assert(len(flows) == len(ref_imgs))
@@ -290,15 +290,15 @@ def photometric_flow_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.5, w
         ref_imgs_scaled = [nn.functional.adaptive_avg_pool2d(ref_img, (h, w)) for ref_img in ref_imgs]
 
         reconstruction_loss_all = []
-        ssim_loss = 0.0
         for i, ref_img in enumerate(ref_imgs_scaled):
             current_flow = flows[i]
             ref_img_warped = flow_warp(ref_img, current_flow)
             # valid_pixels = 1 - (ref_img_warped == 0).prod(1, keepdim=True).type_as(ref_img_warped)
             diff = (tgt_img_scaled - ref_img_warped) 
-             
-            if wssim:
-                ssim_loss += wssim*(1 - ssim(tgt_img_scaled, ref_img_warped)).mean()
+            # ssim_loss = 1 - ssim(tgt_img_scaled, ref_img_warped) 
+            # if wssim:
+            #     reconstruction_loss = (1- wssim)*robust_l1_per_pix(diff.mean(1, True), q=qch) + wssim*ssim_loss.mean(1, True) 
+            # else:
             
             reconstruction_loss = robust_l1_per_pix(diff.mean(1, True), q=qch)
 
@@ -317,7 +317,7 @@ def photometric_flow_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.5, w
         # loss = torch.mean(loss,3)
         # loss = torch.mean(loss,2)
         # loss = torch.mean(loss,0)
-        return loss.sum()/loss_weight.sum()+ssim_loss
+        return loss.sum()/loss_weight.sum()
 
     if type(flows[0]) not in [tuple, list]:
         # if explainability_mask is not None:
@@ -375,7 +375,7 @@ def scale_weight(x,m,E):
     x = 1/(1+torch.pow(m/x,8))
     return x
 
-def photometric_flow_gradient_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.5, wssim=0.0, wconsis=0.0):
+def photometric_flow_gradient_min_loss(tgt_img, ref_imgs, flows, lambda_oob=0, qch=0.38, wssim=0.0, wconsis=0.0):
     def one_scale(flows):
         assert(len(flows) == len(ref_imgs))
 
@@ -707,44 +707,6 @@ def edge_aware_smoothness_loss(img, pred_disp):
 
       weights_x = torch.exp(-torch.mean(torch.abs(image_gradients_x), 1, keepdim=True))
       weights_y = torch.exp(-torch.mean(torch.abs(image_gradients_y), 1, keepdim=True))
-
-      smoothness_x = torch.abs(pred_gradients_x) * weights_x
-      smoothness_y = torch.abs(pred_gradients_y) * weights_y
-      return torch.mean(smoothness_x) + torch.mean(smoothness_y)
-
-    loss = 0
-    weight = 1.0
-
-    for scaled_disp in pred_disp:
-        b, _, h, w = scaled_disp.size()
-        # mean_disp = scaled_disp.mean(2, True).mean(3, True)
-        # norm_disp = scaled_disp / (mean_disp + 1e-7)
-        scaled_img = nn.functional.adaptive_avg_pool2d(img, (h, w))
-        loss += weight*get_edge_smoothness(scaled_img, scaled_disp)
-        # weight /= 4   # 2sqrt(2)
-        weight /= 2.3   # 2sqrt(2)
-
-
-    return loss
-
-def edge_aware_smoothness_loss_change_weight(img, pred_disp, alpha):
-    def gradient_x(img):
-      gx = img[:,:,:-1,:] - img[:,:,1:,:]
-      return gx
-
-    def gradient_y(img):
-      gy = img[:,:,:,:-1] - img[:,:,:,1:]
-      return gy
-
-    def get_edge_smoothness(img, pred):
-      pred_gradients_x = gradient_x(pred)
-      pred_gradients_y = gradient_y(pred)
-
-      image_gradients_x = gradient_x(img)
-      image_gradients_y = gradient_y(img)
-
-      weights_x = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_x), 1, keepdim=True))
-      weights_y = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_y), 1, keepdim=True))
 
       smoothness_x = torch.abs(pred_gradients_x) * weights_x
       smoothness_y = torch.abs(pred_gradients_y) * weights_y
