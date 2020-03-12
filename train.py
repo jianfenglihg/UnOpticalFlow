@@ -206,19 +206,13 @@ def main():
     #         normalize
     #     ])
 
-    # train_transform = custom_transforms.Compose([
-    #     custom_transforms.RandomHorizontalFlip(),
-    #     custom_transforms.RandomScaleCrop(),
-    #     custom_transforms.ArrayToTensor(),
-    #     normalize
-    # ])
-
     train_transform = custom_transforms.Compose([
         custom_transforms.RandomHorizontalFlip(),
         custom_transforms.RandomScaleCrop(),
-        custom_transforms.ArrayToTensor()
+        custom_transforms.ArrayToTensor(),
+        normalize
     ])
- 
+
     # train_transform = custom_transforms.Compose([
     #     custom_transforms.Histogram_equalization(),
     #     custom_transforms.RandomHorizontalFlip(),
