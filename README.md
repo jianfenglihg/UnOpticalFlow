@@ -19,7 +19,7 @@ python3 data/prepare_train_data.py /path/to/raw/kitti/dataset/ --dataset-format 
 ## Traning
 Once the data are formatted following the above instructions, you should be able to run a training experiment. 
 ```
-python3 train.py /path/to/resulting/formatted/data/ --flownet Back2FutureS -f 100 -b 16 -pf1st 0.06 -pf2nd 8.0 -s1st 0.0 -s2nd 10 -a 10 -cv 0.0 --wssim 0.0 --wconsis 0.0 --epoch-size 1000 --log-output --lr 2e-4 --with-flow-gt --kitti-dir /path/to/validation_data/kitti2015 --epochs 300 --smoothness-type edgeaware --log-terminal --min --name experiment_name
+python3 train.py /path/to/resulting/formatted/data/ --flownet Back2FutureS -f 100 -b 16 -pf1st 0.06 -pf2nd 8.0 -s1st 0.0 -s2nd 10 -a 10 -cv 0.0 --wssim 0.0 --wconsis 0.0 --epoch-size 1000 --log-output --lr 2e-4 --with-flow-gt --kitti-dir /path/to/validation_data/kitti2015 --epochs 400 --smoothness-type edgeaware --log-terminal --min --name experiment_name
 
 ```
 experiment you run gets logged in experiment_recorder.md.
