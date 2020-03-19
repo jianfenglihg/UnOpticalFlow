@@ -29,7 +29,7 @@ tensorboard --logdir=checkpoints/
 ```
 
 ## Testing
-You can download the pretrained models for testing from [here, extract code:4hnd](https://pan.baidu.com/s/1FRMUsPsBtzw_jEqNu0HQ7A).
+You can download the pretrained models for testing from [here](https://drive.google.com/open?id=1AL1sbANhqQvnMt8kAsGB9jyyKgxbhvDj).
 Optical Flow evaluation using:
 ```
 python test_flow_back2future.py --flownet Back2FutureS  --pretrained-flow /path/to/flownet/flownet_model_best.pth.tar  --kitti-dir 'path/to/kitti2015' -all -kdt Kitti2015
