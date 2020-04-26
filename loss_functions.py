@@ -505,10 +505,10 @@ def edge_aware_smoothness_second_order_loss_change_weight(img, pred_disp,alpha):
     #   image_gradients_y_up = gradient_y_up(pred)
       image_gradients_y_down = gradient_y_down(img)
 
-    #   weights_x = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_x_down), 1, keepdim=True))
-    #   weights_y = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_y_down), 1, keepdim=True))
-      weights_x = torch.exp(-alpha*torch.abs(image_gradients_x_down))
-      weights_y = torch.exp(-alpha*torch.abs(image_gradients_y_down))
+      weights_x = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_x_down), 1, keepdim=True))
+      weights_y = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_y_down), 1, keepdim=True))
+    #   weights_x = torch.exp(-alpha*torch.abs(image_gradients_x_down))
+    #   weights_y = torch.exp(-alpha*torch.abs(image_gradients_y_down))
       smoothness_x = pred_gradients_x_down.pow(2)*weights_x
       smoothness_y = pred_gradients_y_down.pow(2)*weights_y
 
