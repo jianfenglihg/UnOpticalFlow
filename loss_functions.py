@@ -449,10 +449,10 @@ def edge_aware_smoothness_second_order_loss(img, pred_disp):
       pred_gradients_y_up = gradient_y_up(pred)
       pred_gradients_y_down = gradient_y_down(pred)
 
-      image_gradients_x_up = gradient_x_up(pred)
-      image_gradients_x_down = gradient_x_down(pred)
-      image_gradients_y_up = gradient_y_up(pred)
-      image_gradients_y_down = gradient_y_down(pred)
+      image_gradients_x_up = gradient_x_up(img)
+      image_gradients_x_down = gradient_x_down(img)
+      image_gradients_y_up = gradient_y_up(img)
+      image_gradients_y_down = gradient_y_down(img)
 
       weights_x = torch.exp(-torch.mean(torch.abs(image_gradients_x_down), 1, keepdim=True))*torch.exp(-torch.mean(torch.abs(image_gradients_x_up), 1, keepdim=True))
       weights_y = torch.exp(-torch.mean(torch.abs(image_gradients_y_down), 1, keepdim=True))*torch.exp(-torch.mean(torch.abs(image_gradients_y_up), 1, keepdim=True))
@@ -501,9 +501,9 @@ def edge_aware_smoothness_second_order_loss_change_weight(img, pred_disp,alpha):
       pred_gradients_y_down = gradient_y_down(pred)
 
     #   image_gradients_x_up = gradient_x_up(pred)
-      image_gradients_x_down = gradient_x_down(pred)
+      image_gradients_x_down = gradient_x_down(img)
     #   image_gradients_y_up = gradient_y_up(pred)
-      image_gradients_y_down = gradient_y_down(pred)
+      image_gradients_y_down = gradient_y_down(img)
 
     #   weights_x = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_x_down), 1, keepdim=True))
     #   weights_y = torch.exp(-alpha*torch.mean(torch.abs(image_gradients_y_down), 1, keepdim=True))

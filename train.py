@@ -385,7 +385,7 @@ def train(train_loader, flow_net, optimizer, epoch_size, logger=None, train_writ
                 loss_flow_recon += args.flow_photo_loss_weight_second * loss_per
             else:
                 loss_flow_recon += args.flow_photo_loss_weight_second*photometric_flow_gradient_loss(tgt_img_var, ref_imgs_var, [flow_bwd, flow_fwd],
-                                                lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim, wconsis=args.wconsis)
+                                                lambda_oob=args.lambda_oob, qch=args.qch, wssim=args.wssim)
             
 
         if args.smooth_loss_weight_first:
@@ -472,8 +472,6 @@ def validate_flow_with_gt(val_loader, flow_net, epoch, logger, output_writers=[]
     for i, (tgt_img, ref_imgs, intrinsics, intrinsics_inv, flow_gt, obj_map_gt) in enumerate(val_loader):
         tgt_img_var = Variable(tgt_img.cuda(), volatile=True)
         ref_imgs_var = [Variable(img.cuda(), volatile=True) for img in ref_imgs]
-        intrinsics_var = Variable(intrinsics.cuda(), volatile=True)
-        intrinsics_inv_var = Variable(intrinsics_inv.cuda(), volatile=True)
 
         flow_gt_var = Variable(flow_gt.cuda(), volatile=True)
         obj_map_gt_var = Variable(obj_map_gt.cuda(), volatile=True)
