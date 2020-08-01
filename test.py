@@ -4,7 +4,7 @@ from core.dataset import KITTI_2012, KITTI_2015
 from core.evaluation import eval_flow_avg, load_gt_flow_kitti
 from core.evaluation import eval_depth
 from core.visualize import Visualizer_debug
-from core.networks import Model_depth_pose, Model_flow, Model_flowposenet
+from core.networks import Model_flow
 from core.evaluation import load_gt_flow_kitti, load_gt_mask
 import torch
 from tqdm import tqdm
