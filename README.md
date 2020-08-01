@@ -3,6 +3,11 @@
 ## Introduction
 We proposed a new method of dealing with occulsion problem in unsupervised learning of optical flow by calculating occlusion mask. 
 Compared with UnFlow(AAAI 2018) and OAFlow(CVPR 2018), we achieved more precise results in KITTI dataset.
+|method |KITTI 2012| KITTI 2015|
+|------ |----------|-----------|
+|UnFlow| 3.78 | 8.80 |
+|OAFlow| 3.55 | 8.88|
+|Ours | **2.5** | **7.1** |
 
 ## Installation
 The code is based on Python3.6. You could use either virtualenv or conda to setup a specified environment. And then run:
