@@ -9,7 +9,7 @@ import pdb
 
 class SINTEL_Prepared(torch.utils.data.Dataset):
     def __init__(self, data_dir, num_scales=3, img_hw=(256, 832), num_iterations=None):
-        super(KITTI_Prepared, self).__init__()
+        super(SINTEL_Prepared, self).__init__()
         self.data_dir = data_dir
         self.num_scales = num_scales
         self.img_hw = img_hw

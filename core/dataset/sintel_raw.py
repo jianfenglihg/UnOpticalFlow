@@ -67,7 +67,7 @@ class SINTEL_RAW(object):
             #f = open(os.path.join(output_dir, 'train.txt'), 'w')
             print('Preparing sequence data....')
             if not os.path.isdir(self.data_dir):
-                raise
+                raise NotImplementedError
             dirlist = os.listdir(self.data_dir)
             total_dirlist = []
             # Get the different folders of images

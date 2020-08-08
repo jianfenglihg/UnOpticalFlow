@@ -83,6 +83,9 @@ def train(cfg):
         if cfg.dataset == 'kitti_depth':
             kitti_raw_dataset = KITTI_RAW(cfg.raw_base_dir, cfg.static_frames_txt, cfg.test_scenes_txt)
             kitti_raw_dataset.prepare_data_mp(data_dir, stride=1)
+        elif cfg.dataset == 'sintel_raw':
+            sintel_raw_dataset = SINTEL_RAW(cfg.raw_base_dir)
+            sintel_raw_dataset.prepare_data_mp(data_dir, stride=1)
         elif cfg.dataset == 'kitti_odo':
             kitti_raw_dataset = KITTI_Odo(cfg.raw_base_dir)
             kitti_raw_dataset.prepare_data_mp(data_dir, stride=1)
@@ -92,8 +95,12 @@ def train(cfg):
         else:
             raise NotImplementedError
         
+    exit()
+    
     if cfg.dataset == 'kitti_depth':
         dataset = KITTI_Prepared(data_dir, num_scales=cfg.num_scales, img_hw=cfg.img_hw, num_iterations=(cfg.num_iterations - cfg.iter_start) * cfg.batch_size)
+    elif cfg.dataset == 'sintel_raw':
+        dataset = SINTEL_Prepared(data_dir, num_scales=cfg.num_scales, img_hw=cfg.img_hw, num_iterations=(cfg.num_iterations - cfg.iter_start) * cfg.batch_size)
     elif cfg.dataset == 'kitti_odo':
         dataset = KITTI_Prepared(data_dir, num_scales=cfg.num_scales, img_hw=cfg.img_hw, num_iterations=(cfg.num_iterations - cfg.iter_start) * cfg.batch_size)
     elif cfg.dataset == 'nyuv2':

@@ -1,13 +1,13 @@
 cfg_name: 'default'
 
 # dataset
-raw_base_dir: '/media/ljf/Data/kitti/kitti_raw'
-prepared_base_dir: '/home/ljf/Dataset/kitti_release'
+raw_base_dir: '/home/ljf/Dataset/Sintel/scene'
+prepared_base_dir: '/home/ljf/Dataset/sintel_release'
 gt_2012_dir: '/media/ljf/Work/DATASET/kitti-flow/kitti2012/training'
 gt_2015_dir: '/media/ljf/Work/DATASET/kitti-flow/kitti2015/data_scene_flow/training'
 static_frames_txt: '/home/ljf/TrianFlow/data/eigen/static_frames.txt'
 test_scenes_txt: '/home/ljf/TrianFlow/data/eigen/test_scenes.txt'
-dataset: 'kitti_depth'
+dataset: 'sintel_raw'
 num_scales: 3
 
 # training
