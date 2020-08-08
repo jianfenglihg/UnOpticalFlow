@@ -401,7 +401,7 @@ class Model_flow(nn.Module):
 
     def forward(self, inputs, output_flow=False, use_flow_loss=True, is_second_phase=False):
         images = inputs[0]
-        print(images.shape)
+        print(inputs)
         assert (images.shape[1] == 3)
         img_h, img_w = int(images.shape[2] / 3), images.shape[3] 
         imgl, img, imgr = images[:,:,:img_h,:], images[:,:,img_h:2*img_h,:], images[:,:,2*img_h:3*img_h,:]
