@@ -95,7 +95,6 @@ def train(cfg):
         else:
             raise NotImplementedError
         
-    exit()
     
     if cfg.dataset == 'kitti_depth':
         dataset = KITTI_Prepared(data_dir, num_scales=cfg.num_scales, img_hw=cfg.img_hw, num_iterations=(cfg.num_iterations - cfg.iter_start) * cfg.batch_size)
@@ -109,7 +108,7 @@ def train(cfg):
         raise NotImplementedError
     
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers, drop_last=False)
-    if cfg.dataset == 'kitti_depth' or cfg.dataset == 'kitti_odo':
+    if cfg.dataset == 'kitti_depth' or cfg.dataset == 'kitti_odo' or cfg.dataset == 'sintel_raw':
         gt_flows_2012, noc_masks_2012 = load_gt_flow_kitti(cfg.gt_2012_dir, 'kitti_2012')
         gt_flows_2015, noc_masks_2015 = load_gt_flow_kitti(cfg.gt_2015_dir, 'kitti_2015')
         gt_masks_2015 = load_gt_mask(cfg.gt_2015_dir)
