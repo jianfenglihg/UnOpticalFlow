@@ -59,11 +59,9 @@ class SINTEL_RAW(object):
 
 
     def prepare_data_mp(self, output_dir, stride=1):
-        num_processes = 16
+        num_processes = 8
         processes = []
         q = mp.Queue()
-        static_frames = self.collect_static_frame()
-        test_scenes = self.collect_test_scenes()
         if not os.path.isfile(os.path.join(output_dir, 'train.txt')):
             os.makedirs(output_dir)
             #f = open(os.path.join(output_dir, 'train.txt'), 'w')
@@ -74,14 +72,12 @@ class SINTEL_RAW(object):
             total_dirlist = []
             # Get the different folders of images
             for d in dirlist:
-                seclist = os.listdir(os.path.join(self.data_dir, d))
-                for s in seclist:
-                    if os.path.isdir(os.path.join(self.data_dir, d, s)):
-                        total_dirlist.append(os.path.join(d, s))
-                        q.put(os.path.join(d, s))
+                if os.path.isdir(os.path.join(self.data_dir, d)):
+                    total_dirlist.append(d)
+                    q.put(d)
             # Process every folder
             for rank in range(num_processes):
-                p = mp.Process(target=process_folder, args=(q, static_frames, test_scenes, self.data_dir, output_dir, stride))
+                p = mp.Process(target=process_folder, args=(q, self.data_dir, output_dir, stride))
                 p.start()
                 processes.append(p)
             for p in processes:
@@ -91,17 +87,11 @@ class SINTEL_RAW(object):
         f = open(os.path.join(output_dir, 'train.txt'), 'w')
         for date in os.listdir(output_dir):
             if os.path.isdir(os.path.join(output_dir, date)):
-                drives = os.listdir(os.path.join(output_dir, date))
-                for d in drives:
-                    train_file = open(os.path.join(output_dir, date, d, 'train.txt'), 'r')
-                    for l in train_file.readlines():
-                        f.write(l)
+                train_file = open(os.path.join(output_dir, date, d, 'train.txt'), 'r')
+                for l in train_file.readlines():
+                    f.write(l)
         
-        # Get calib files
-        for date in os.listdir(self.data_dir):
-            command = 'cp ' + os.path.join(self.data_dir, date, 'calib_cam_to_cam.txt') + ' ' + os.path.join(output_dir, date, 'calib_cam_to_cam.txt')
-            os.system(command)
-        
+       
         print('Data Preparation Finished.')
 
 
@@ -110,7 +100,7 @@ class SINTEL_RAW(object):
 
 
 if __name__ == '__main__':
-    data_dir = '/home4/zhaow/data/kitti'
+    data_dir = '/home/ljf/Dataset/Sintel/scene'
     dirlist = os.listdir('/home4/zhaow/data/kitti')
     output_dir = '/home4/zhaow/data/kitti_seq/data_generated_s2'
     total_dirlist = []

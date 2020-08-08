@@ -7,7 +7,7 @@ import torch
 import torch.utils.data
 import pdb
 
-class KITTI_Prepared(torch.utils.data.Dataset):
+class SINTEL_Prepared(torch.utils.data.Dataset):
     def __init__(self, data_dir, num_scales=3, img_hw=(256, 832), num_iterations=None):
         super(KITTI_Prepared, self).__init__()
         self.data_dir = data_dir
@@ -27,7 +27,6 @@ class KITTI_Prepared(torch.utils.data.Dataset):
             k = line.strip('\n').split()
             data = {}
             data['image_file'] = os.path.join(self.data_dir, k[0])
-            data['cam_intrinsic_file'] = os.path.join(self.data_dir, k[1])
             data_list.append(data)
         print('A total of {} image pairs found'.format(len(data_list)))
         return data_list
@@ -89,7 +88,6 @@ class KITTI_Prepared(torch.utils.data.Dataset):
         img = img / 255.0
         return img
 
-
     def preprocess_img_origin(self, img, img_hw=None, is_test=False):
         if img_hw is None:
             img_hw = self.img_hw
@@ -98,37 +96,6 @@ class KITTI_Prepared(torch.utils.data.Dataset):
             img = self.random_flip_img(img)
         img = img / 255.0
         return img
-
-    def read_cam_intrinsic(self, fname):
-        with open(fname, 'r') as f:
-            lines = f.readlines()
-        data = lines[-1].strip('\n').split(' ')[1:]
-        data = [float(k) for k in data]
-        data = np.array(data).reshape(3,4)
-        cam_intrinsics = data[:3,:3]
-        return cam_intrinsics
-
-    def rescale_intrinsics(self, K, img_hw_orig, img_hw_new):
-        K[0,:] = K[0,:] * img_hw_new[0] / img_hw_orig[0]
-        K[1,:] = K[1,:] * img_hw_new[1] / img_hw_orig[1]
-        return K
-
-    def get_intrinsics_per_scale(self, K, scale):
-        K_new = copy.deepcopy(K)
-        K_new[0,:] = K_new[0,:] / (2**scale)
-        K_new[1,:] = K_new[1,:] / (2**scale)
-        K_new_inv = np.linalg.inv(K_new)
-        return K_new, K_new_inv
-
-    def get_multiscale_intrinsics(self, K, num_scales):
-        K_ms, K_inv_ms = [], []
-        for s in range(num_scales):
-            K_new, K_new_inv = self.get_intrinsics_per_scale(K, s)
-            K_ms.append(K_new[None,:,:])
-            K_inv_ms.append(K_new_inv[None,:,:])
-        K_ms = np.concatenate(K_ms, 0)
-        K_inv_ms = np.concatenate(K_inv_ms, 0)
-        return K_ms, K_inv_ms
 
     def __getitem__(self, idx):
         '''
@@ -146,10 +113,6 @@ class KITTI_Prepared(torch.utils.data.Dataset):
         img = self.preprocess_img(img, self.img_hw) # (img_h * 3, img_w, 3)
         img = img.transpose(2,0,1)
 
-        # load intrinsic
-        cam_intrinsic = self.read_cam_intrinsic(data['cam_intrinsic_file'])
-        cam_intrinsic = self.rescale_intrinsics(cam_intrinsic, img_hw_orig, self.img_hw)
-        K_ms, K_inv_ms = self.get_multiscale_intrinsics(cam_intrinsic, self.num_scales) # (num_scales, 3, 3), (num_scales, 3, 3)
         return torch.from_numpy(img).float()
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 import os, sys
 import yaml
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from core.dataset import KITTI_RAW, KITTI_Prepared, NYU_Prepare, NYU_v2, KITTI_Odo
+from core.dataset import KITTI_RAW, KITTI_Prepared, SINTEL_RAW, SINTEL_Prepared, NYU_Prepare, NYU_v2, KITTI_Odo
 from core.networks import get_model
 from core.config import generate_loss_weights_dict
 from core.visualize import Visualizer
