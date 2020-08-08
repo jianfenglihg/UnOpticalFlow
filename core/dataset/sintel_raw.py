@@ -18,7 +18,8 @@ def process_folder(q, data_dir, output_dir, stride=1):
         
         # Note. the os.listdir method returns arbitary order of list. We need correct order.
         numbers = len(os.listdir(image_path))
-        names = os.listdir(image_path).sort()
+        names = list(os.listdir(image_path))
+        names.sort()
         if numbers < 3:
             print("this folder do not have enough image, numbers < 3!")
         for n in range(numbers - 2*stride):
