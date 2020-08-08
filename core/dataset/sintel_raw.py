@@ -18,6 +18,7 @@ def process_folder(q, data_dir, output_dir, stride=1):
         
         # Note. the os.listdir method returns arbitary order of list. We need correct order.
         numbers = len(os.listdir(image_path))
+        names = os.listdir(image_path).sort()
         if numbers < 3:
             print("this folder do not have enough image, numbers < 3!")
         for n in range(numbers - 2*stride):
@@ -25,9 +26,12 @@ def process_folder(q, data_dir, output_dir, stride=1):
             m_idx = s_idx + stride
             e_idx = s_idx + 2*stride
             
-            curr_image = cv2.imread(os.path.join(image_path, '%.5d'%s_idx)+'.png')
-            middle_image = cv2.imread(os.path.join(image_path, '%.5d'%m_idx)+'.png')
-            next_image = cv2.imread(os.path.join(image_path, '%.5d'%e_idx)+'.png')
+            #curr_image = cv2.imread(os.path.join(image_path, '%.5d'%s_idx)+'.png')
+            #middle_image = cv2.imread(os.path.join(image_path, '%.5d'%m_idx)+'.png')
+            #next_image = cv2.imread(os.path.join(image_path, '%.5d'%e_idx)+'.png')
+            curr_image = cv2.imread(os.path.join(image_path, names[s_idx]))
+            middle_image = cv2.imread(os.path.join(image_path, names[m_idx]))
+            next_image = cv2.imread(os.path.join(image_path, names[e_idx]))
 
             if curr_image is None:
                 print(os.path.join(image_path, '%.5d'%s_idx)+'.png')

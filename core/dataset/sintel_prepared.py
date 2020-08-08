@@ -109,7 +109,7 @@ class SINTEL_Prepared(torch.utils.data.Dataset):
         data = self.data_list[idx]
         # load img
         img = cv2.imread(data['image_file'])
-        img_hw_orig = (int(img.shape[0] / 3), img.shape[1])
+        #img_hw_orig = (int(img.shape[0] / 3), img.shape[1])
         img = self.preprocess_img(img, self.img_hw) # (img_h * 3, img_w, 3)
         img = img.transpose(2,0,1)
 
