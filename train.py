@@ -85,7 +85,7 @@ def train(cfg):
             kitti_raw_dataset.prepare_data_mp(data_dir, stride=1)
         elif cfg.dataset == 'sintel_raw':
             sintel_raw_dataset = SINTEL_RAW(cfg.raw_base_dir)
-            sintel_raw_dataset.prepare_data_mp(data_dir, stride=1)
+            sintel_raw_dataset.prepare_data_mp(data_dir, cfg.stride)
         elif cfg.dataset == 'kitti_odo':
             kitti_raw_dataset = KITTI_Odo(cfg.raw_base_dir)
             kitti_raw_dataset.prepare_data_mp(data_dir, stride=1)

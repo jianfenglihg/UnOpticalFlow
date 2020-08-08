@@ -9,6 +9,7 @@ static_frames_txt: '/home/ljf/TrianFlow/data/eigen/static_frames.txt'
 test_scenes_txt: '/home/ljf/TrianFlow/data/eigen/test_scenes.txt'
 dataset: 'sintel_raw'
 num_scales: 3
+stride: 2
 
 # training
 num_iterations: 200000
