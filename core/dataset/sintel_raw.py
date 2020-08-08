@@ -45,7 +45,6 @@ def process_folder(q, data_dir, output_dir, stride=1):
             cv2.imwrite(os.path.join(dump_image_path, '%.10d'%s_idx)+'.png', seq_images.astype('uint8'))
 
             # Write training files
-            date = folder.split('/')[0]
             f.write('%s\n' % (os.path.join(folder, '%.10d'%s_idx)+'.png'))
         print(folder)
 
@@ -87,7 +86,7 @@ class SINTEL_RAW(object):
         f = open(os.path.join(output_dir, 'train.txt'), 'w')
         for date in os.listdir(output_dir):
             if os.path.isdir(os.path.join(output_dir, date)):
-                train_file = open(os.path.join(output_dir, date, d, 'train.txt'), 'r')
+                train_file = open(os.path.join(output_dir, date, 'train.txt'), 'r')
                 for l in train_file.readlines():
                     f.write(l)
         
