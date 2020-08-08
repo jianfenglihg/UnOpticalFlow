@@ -46,7 +46,7 @@ def process_folder(q, data_dir, output_dir, stride=1):
 
             # Write training files
             date = folder.split('/')[0]
-            f.write('%s %s\n' % (os.path.join(folder, '%.10d'%s_idx)+'.png'))
+            f.write('%s\n' % (os.path.join(folder, '%.10d'%s_idx)+'.png'))
         print(folder)
 
 
