@@ -124,7 +124,7 @@ def train(cfg):
                 model_eval = model.module
             else:
                 model_eval = model
-            if cfg.dataset == 'kitti_depth' or cfg.dataset == 'kitti_odo':
+            if cfg.dataset == 'kitti_depth' or cfg.dataset == 'kitti_odo' or cfg.dataset == 'sintel_raw':
                 if not (cfg.mode == 'depth' or cfg.mode == 'flowposenet'):
                     eval_2012_res = test_kitti_2012(cfg, model_eval, gt_flows_2012, noc_masks_2012)
                     eval_2015_res = test_kitti_2015(cfg, model_eval, gt_flows_2015, noc_masks_2015, gt_masks_2015, depth_save_dir=os.path.join(cfg.model_dir, 'results'))
@@ -137,7 +137,8 @@ def train(cfg):
         model.train()
         iter_ = iter_ + cfg.iter_start
         optimizer.zero_grad()
-        inputs = [k.cuda() for k in inputs]
+        inputs = inputs.cuda()
+        #inputs = [k.cuda() for k in inputs]
         loss_pack = model(inputs)
 
         if iter_ % cfg.log_interval == 0:

@@ -400,8 +400,7 @@ class Model_flow(nn.Module):
         return optical_flows[0], optical_flows_rev[0], img1_valid_masks[0], img2_valid_masks[0], fwd_flow_diff_pyramid[0], bwd_flow_diff_pyramid[0]
 
     def forward(self, inputs, output_flow=False, use_flow_loss=True, is_second_phase=False):
-        images = inputs[0]
-        print(inputs)
+        images = inputs
         assert (images.shape[1] == 3)
         img_h, img_w = int(images.shape[2] / 3), images.shape[3] 
         imgl, img, imgr = images[:,:,:img_h,:], images[:,:,img_h:2*img_h,:], images[:,:,2*img_h:3*img_h,:]
