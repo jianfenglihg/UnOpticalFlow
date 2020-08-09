@@ -24,7 +24,7 @@ h_flow_consist_beta: 0.05
 
 
 # basic info
-img_hw: [448, 1024]
-# img_hw: [384, 832]
+# img_hw: [448, 1024]
+img_hw: [384, 832]
 use_svd_gpu: False
 

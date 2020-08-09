@@ -15,7 +15,7 @@ colorlib = [(0,0,255),(255,0,0),(0,255,0),(255,255,0),(0,255,255),(255,0,255),(0
 class Visualizer(object):
     def __init__(self, loss_weights_dict, dump_dir=None):
         self.loss_weights_dict = loss_weights_dict
-        self.use_flow_error = (self.loss_weights_dict['flow_error'] > 0)
+        #self.use_flow_error = (self.loss_weights_dict['flow_error'] > 0)
         self.dump_dir = dump_dir
 
         self.log_list = []
@@ -40,9 +40,9 @@ class Visualizer(object):
             loss_depth_smooth = loss_pack['depth_smooth_loss'].mean().detach().cpu().numpy()
             str_= ('iter: {0}, loss_pixel: {1:.6f}, loss_ssim: {2:.6f}, loss_pt_depth: {3:.6f}, loss_pj_depth: {4:.6f}, loss_depth_smooth: {5:.6f}'.format(\
                 iter_, loss_pixel, loss_ssim, loss_pt_depth, loss_pj_depth, loss_depth_smooth))
-            if self.use_flow_error:
-                loss_flow_error = loss_pack['flow_error'].mean().detach().cpu().numpy()
-                str_ = str_ + ', loss_flow_error: {0:.6f}'.format(loss_flow_error)
+            #if self.use_flow_error:
+            #    loss_flow_error = loss_pack['flow_error'].mean().detach().cpu().numpy()
+            #    str_ = str_ + ', loss_flow_error: {0:.6f}'.format(loss_flow_error)
             print(str_)
         else:
             print('iter: {4}, loss_pixel: {0:.6f}, loss_ssim: {1:.6f}, loss_flow_smooth: {2:.6f}, loss_flow_consis: {3:.6f}'.format(loss_pixel, loss_ssim, loss_flow_smooth, loss_flow_consis, iter_))
