@@ -17,17 +17,17 @@ def test_kitti_2012(cfg, model, gt_flows, noc_masks):
     dataset = KITTI_2012(cfg.gt_2012_dir)
     flow_list = []
     for idx, inputs in enumerate(tqdm(dataset)):
-        img, K, K_inv = inputs
+        # img, K, K_inv = inputs
+        img = inputs
         img = img[None,:,:,:]
-        K = K[None,:,:]
-        K_inv = K_inv[None,:,:]
+        # K = K[None,:,:]
+        # K_inv = K_inv[None,:,:]
         img_h = int(img.shape[2] / 2)
         img1, img2 = img[:,:,:img_h,:], img[:,:,img_h:,:]
-        img1, img2, K, K_inv = img1.cuda(), img2.cuda(), K.cuda(), K_inv.cuda()
+        img1, img2 = img1.cuda(), img2.cuda()
         if cfg.mode == 'flow' or cfg.mode == 'flowposenet':
             flow = model.inference_flow(img1, img2)
-        else:
-            flow, _, _, _, _, _ = model.inference(img1, img2, K, K_inv)
+        
         #pdb.set_trace()
         flow = flow[0].detach().cpu().numpy()
         flow = flow.transpose(1,2,0)
@@ -47,21 +47,21 @@ def test_kitti_2015(cfg, model, gt_flows, noc_masks, gt_masks, depth_save_dir=No
     pred_disp_list = []
     img_list = []
     for idx, inputs in enumerate(tqdm(dataset)):
-        img, K, K_inv = inputs
+        # img, K, K_inv = inputs
+        img = inputs
         img = img[None,:,:,:]
-        K = K[None,:,:]
-        K_inv = K_inv[None,:,:]
+        
         img_h = int(img.shape[2] / 2)
         img1, img2 = img[:,:,:img_h,:], img[:,:,img_h:,:]
         img_list.append(img1)
-        img1, img2, K, K_inv = img1.cuda(), img2.cuda(), K.cuda(), K_inv.cuda()
+        img1, img2 = img1.cuda(), img2.cuda()
         if cfg.mode == 'flow' or cfg.mode == 'flowposenet':
             flow = model.inference_flow(img1, img2)
-        else:
-            flow, disp1, disp2, Rt, _, _ = model.inference(img1, img2, K, K_inv)
-            disp = disp1[0].detach().cpu().numpy()
-            disp = disp.transpose(1,2,0)
-            pred_disp_list.append(disp)
+        # else:
+        #     flow, disp1, disp2, Rt, _, _ = model.inference(img1, img2, K, K_inv)
+        #     disp = disp1[0].detach().cpu().numpy()
+        #     disp = disp.transpose(1,2,0)
+        #     pred_disp_list.append(disp)
 
         flow = flow[0].detach().cpu().numpy()
         flow = flow.transpose(1,2,0)

@@ -52,11 +52,7 @@ class KITTI_2012(KITTI_Prepared):
         img = self.preprocess_img_origin(img, self.img_hw, is_test=True)
         img  = img.transpose(2,0,1)
 
-        # load intrinsic
-        cam_intrinsic = self.read_cam_intrinsic(data['calib_file_dir'])
-        cam_intrinsic = self.rescale_intrinsics(cam_intrinsic, img_hw_orig, self.img_hw)
-        K, K_inv = self.get_intrinsics_per_scale(cam_intrinsic, scale=0) # (3, 3), (3, 3)
-        return torch.from_numpy(img).float(), torch.from_numpy(K).float(), torch.from_numpy(K_inv).float()
+        return torch.from_numpy(img).float()
 
 if __name__ == '__main__':
     pass
