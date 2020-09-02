@@ -416,9 +416,9 @@ class Model_flow(nn.Module):
         #optical_flows_fwd_rev = self.pwc_model(feature_list_r, feature_list, [img_h, img_w])
 
 
-        #cv2.imwrite('./meta/imgl.png', np.transpose(255*imgl[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
-        #cv2.imwrite('./meta/img.png', np.transpose(255*img[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
-        #cv2.imwrite('./meta/imgr.png', np.transpose(255*imgr[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
+        cv2.imwrite('./meta/imgl.png', np.transpose(255*imgl[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
+        cv2.imwrite('./meta/img.png', np.transpose(255*img[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
+        cv2.imwrite('./meta/imgr.png', np.transpose(255*imgr[0].cpu().detach().numpy(), [1,2,0]).astype(np.uint8))
 
         
         loss_pack = {}
