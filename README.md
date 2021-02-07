@@ -20,11 +20,6 @@ pip install -r requirements.txt
 ### Prepare training data:
 1. Download KITTI raw dataset using the <a href="http://www.cvlibs.net/download.php?file=raw_data_downloader.zip">script</a> provided on the official website. You also need to download <a href="http://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=flow">KITTI 2015 dataset</a> to evaluate the predicted optical flow. 
 
-2. prepare data
-```
-
-```
-
 ### Training:
 1. Modify the configuration file in the ./config directory to set up your path. The config file contains the important paths and default hyper-parameters used in the training process.
 
@@ -34,6 +29,8 @@ pip install -r requirements.txt
 If you are running experiments on the dataset for the first time, it would first process data and save in the [prepared_base_dir] path defined in your config file. 
 
 ### Evaluation:
+the network weights after training on kitti raw data is [here](https://drive.google.com/file/d/13kJDIo4Kwz3ylhtwdus_KsOfZLHWcbPf/view?usp=sharing)
+
 1. To evaluate the optical flow estimation on KITTI 2015, run:
 ```bash
 python test.py --config_file ./config/kitti.yaml --gpu [gpu_id] --mode flow --task kitti_flow --pretrained_model [path/to/your/model]
