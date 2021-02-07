@@ -276,11 +276,6 @@ class Model_flow(nn.Module):
         loss = torch.cat(loss_list, 1).sum(1) # (B)
         return loss
 
-    def cauchy_kernel(self, x, c=1):
-        x_2 = torch.pow(x,2)
-        res = c*c*torch.log(1+x_2/c/c)
-        return res
-
     def compute_diff_weight(self, img_pyramid_from_l, img_pyramid, img_pyramid_from_r):
         diff_fwd = []
         diff_bwd = []
@@ -311,12 +306,9 @@ class Model_flow(nn.Module):
             weight_bwd.append(torch.unsqueeze(weight[:,0,:,:],1) * valid_pixels_bwd)
             weight_fwd.append(torch.unsqueeze(weight[:,1,:,:],1) * valid_pixels_fwd)
 
-
-            # diff_fwd.append(img_diff_r)
-            # diff_bwd.append(img_diff_l)
-
-            diff_fwd.append(self.cauchy_kernel(img_diff_r))
-            diff_bwd.append(self.cauchy_kernel(img_diff_l))
+            diff_fwd.append(img_diff_r)
+            diff_bwd.append(img_diff_l)
+             
         return diff_bwd, diff_fwd, weight_bwd, weight_fwd
 
 

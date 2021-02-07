@@ -9,16 +9,15 @@ static_frames_txt: '/home/ljf/TrianFlow/data/eigen/static_frames.txt'
 test_scenes_txt: '/home/ljf/TrianFlow/data/eigen/test_scenes.txt'
 dataset: 'sintel_raw'
 num_scales: 3
-stride: 1
+stride: 2
 
 # training
 num_iterations: 200000
 
 # loss hyperparameters
 w_ssim: 0.85 # w_pixel = 1 - w_ssim
-w_flow_smooth: 10.0
-#w_flow_consis: 0.01
-w_flow_consis: 0.00
+w_flow_smooth: 6.0
+w_flow_consis: 0.01
 
 h_flow_consist_alpha: 3.0
 h_flow_consist_beta: 0.05
