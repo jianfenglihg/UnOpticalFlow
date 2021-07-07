@@ -29,7 +29,7 @@ pip install -r requirements.txt
 If you are running experiments on the dataset for the first time, it would first process data and save in the [prepared_base_dir] path defined in your config file. 
 
 ### Evaluation:
-the network weights after training on kitti raw data is [here](https://drive.google.com/file/d/13kJDIo4Kwz3ylhtwdus_KsOfZLHWcbPf/view?usp=sharing)
+the network weights after training on kitti raw data is [here](https://drive.google.com/file/d/1_sXqSUysOy56JiUjVmwdM1Z-1D3B54HH/view?usp=sharing)
 
 1. To evaluate the optical flow estimation on KITTI 2015, run:
 ```bash
