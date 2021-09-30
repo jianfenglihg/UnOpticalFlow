@@ -164,7 +164,7 @@ if __name__ == '__main__':
         description="TrianFlow training pipeline."
     )
     arg_parser.add_argument('-c', '--config_file', default=None, help='config file.')
-    arg_parser.add_argument('-g', '--gpu', type=str, default=0, help='gpu id.')
+    arg_parser.add_argument('-g', '--gpu', type=str, default='0', help='gpu id.')
     arg_parser.add_argument('--batch_size', type=int, default=8, help='batch size.')
     arg_parser.add_argument('--iter_start', type=int, default=0, help='starting iteration.')
     arg_parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
