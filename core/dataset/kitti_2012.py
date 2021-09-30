@@ -22,9 +22,9 @@ class KITTI_2012(KITTI_Prepared):
         data_list = []
         for i in range(self.num_total):
             data = {}
-            data['img1_dir'] = os.path.join(self.data_dir, 'image_2', str(i).zfill(6) + '_10.png')
-            data['img2_dir'] = os.path.join(self.data_dir, 'image_2', str(i).zfill(6) + '_11.png')
-            data['calib_file_dir'] = os.path.join(self.data_dir, 'calib_cam_to_cam', str(i).zfill(6) + '.txt')
+            data['img1_dir'] = os.path.join(self.data_dir, 'colored_0', str(i).zfill(6) + '_10.png')
+            data['img2_dir'] = os.path.join(self.data_dir, 'colored_0', str(i).zfill(6) + '_11.png')
+            data['calib_file_dir'] = os.path.join(self.data_dir, 'calib', str(i).zfill(6) + '.txt')
             data_list.append(data)
         return data_list
 
