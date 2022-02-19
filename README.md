@@ -53,3 +53,6 @@ year = {2021},
 doi = {10.1117/12.2588381},
 URL = {https://doi.org/10.1117/12.2588381}
 }
+
+### one more thing
+This unsupervised optical flow estimation project is intergrated and updated into https://github.com/jianfenglihg/Unsupervised_depth_flow_egomotion.
